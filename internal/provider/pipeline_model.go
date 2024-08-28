@@ -43,7 +43,7 @@ func (r RetryConfigModel) GetAttrType() map[string]attr.Type {
 
 func getPipelineModel(ctx context.Context, pipeline mageai.Pipeline) (*PipelineModel, error) {
 	blocks := make([]BlockModel, 0)
-	for _, block := range pipeline.Blocks {
+	/* for _, block := range pipeline.Blocks {
 		blockConfigurationValue := BlockConfigurationModel{
 			DataProvider:         types.StringValue(block.Configuration.DataProvider),
 			DataProviderDatabase: types.StringValue(block.Configuration.DataProviderDatabase),
@@ -65,10 +65,10 @@ func getPipelineModel(ctx context.Context, pipeline mageai.Pipeline) (*PipelineM
 		}
 
 		blockRetryConfigValue := RetryConfigModel{
-			Delay:              types.Int32Value(pipeline.RetryConfig.Delay),
-			ExponentialBackoff: types.BoolValue(pipeline.RetryConfig.ExponentialBackoff),
-			MaxDelay:           types.Int32Value(pipeline.RetryConfig.MaxDelay),
-			Retries:            types.Int32Value(pipeline.RetryConfig.Retries),
+			Delay:              types.Int32Value(block.RetryConfig.Delay),
+			ExponentialBackoff: types.BoolValue(block.RetryConfig.ExponentialBackoff),
+			MaxDelay:           types.Int32Value(block.RetryConfig.MaxDelay),
+			Retries:            types.Int32Value(block.RetryConfig.Retries),
 		}
 
 		blockRetryConfigObjectValue, diags := types.ObjectValueFrom(ctx, blockRetryConfigValue.GetAttrType(), blockRetryConfigValue)
@@ -100,6 +100,14 @@ func getPipelineModel(ctx context.Context, pipeline mageai.Pipeline) (*PipelineM
 			UUID:                      types.StringValue(block.UUID),
 		}
 		blocks = append(blocks, block)
+	} */
+
+	for _, block := range pipeline.Blocks {
+		blockState, err := getBlockModel(ctx, block)
+		if err != nil {
+			return nil, fmt.Errorf("error getting blocks %s", err)
+		}
+		blocks = append(blocks, *blockState)
 	}
 
 	pipelineRetryConfigValue := RetryConfigModel{

@@ -73,9 +73,9 @@ func (c *client) CreatePipeline(ctx context.Context, pipelineRequest *CreatePipe
 		errRes := errorResponse{}
 		err = json.Unmarshal(respBody, &errRes)
 		if err != nil {
-			return &createPipelineResponse, fmt.Errorf("error unmarshalling JSON: %w", err)
+			return nil, fmt.Errorf("error unmarshalling JSON: %w", err)
 		}
-		return &createPipelineResponse, fmt.Errorf("error creating pipeline: %s, Status code: %d", errRes.Error.Exception, errRes.Error.Code)
+		return nil, fmt.Errorf("error creating pipeline: %s, Status code: %d", errRes.Error.Exception, errRes.Error.Code)
 	}
 	return &createPipelineResponse, nil
 }
@@ -127,7 +127,6 @@ func (c *client) ReadPipeline(ctx context.Context, uuid *string) (*pipelineRespo
 }
 
 func (c *client) ReadPipelines(ctx context.Context) (*pipelinesResponse, error) {
-
 	readPipelinesResponse := pipelinesResponse{}
 	body, err := c.makeAPICall(http.MethodGet, PipelinesAPIPath, nil)
 	if err != nil {
@@ -170,9 +169,9 @@ func (c *client) UpdatePipeline(ctx context.Context, uuid *string, pipelineReque
 		errRes := errorResponse{}
 		err = json.Unmarshal(respBody, &errRes)
 		if err != nil {
-			return &updatePipelineResponse, fmt.Errorf("error unmarshalling JSON: %w", err)
+			return nil, fmt.Errorf("error unmarshalling JSON: %w", err)
 		}
-		return &updatePipelineResponse, fmt.Errorf("error updating pipeline: %s, Status code: %d", errRes.Error.Exception, errRes.Error.Code)
+		return nil, fmt.Errorf("error updating pipeline: %s, Status code: %d", errRes.Error.Exception, errRes.Error.Code)
 	}
 	return &updatePipelineResponse, nil
 }

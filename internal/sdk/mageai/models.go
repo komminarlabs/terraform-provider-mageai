@@ -17,7 +17,7 @@ type pipelinesResponse struct {
 }
 
 type Pipeline struct {
-	Blocks                   []block     `json:"blocks"`
+	Blocks                   []Block     `json:"blocks"`
 	CacheBlockOutputInMemory bool        `json:"cache_block_output_in_memory"`
 	CreatedAt                string      `json:"created_at"`
 	Description              string      `json:"description"`
@@ -32,7 +32,7 @@ type Pipeline struct {
 	VariablesDir             string      `json:"variables_dir"`
 }
 
-type block struct {
+type Block struct {
 	AllUpstreamBlocksExecuted bool               `json:"all_upstream_blocks_executed"`
 	Color                     string             `json:"color"`
 	Configuration             blockConfiguration `json:"configuration"`
