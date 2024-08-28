@@ -11,10 +11,10 @@ import (
 
 const (
 	PipelinesAPIPath                     = "pipelines"
-	integrationPipelineType pipelineType = "integration"
-	pysparkPipelineType     pipelineType = "pyspark"
-	pythonPipelineType      pipelineType = "python"
-	streamingPipelineType   pipelineType = "streaming"
+	integrationPipelineType PipelineType = "integration"
+	pysparkPipelineType     PipelineType = "pyspark"
+	pythonPipelineType      PipelineType = "python"
+	streamingPipelineType   PipelineType = "streaming"
 )
 
 type PipelineAPI interface {
@@ -25,7 +25,7 @@ type PipelineAPI interface {
 	UpdatePipeline(ctx context.Context, uuid *string, pipelineParams *UpdatePipelineRequest) (*pipelineResponse, error)
 }
 
-type pipelineType string
+type PipelineType string
 
 type CreatePipelineRequest struct {
 	Pipeline PipelineRequest `json:"pipeline"`
@@ -37,10 +37,10 @@ type UpdatePipelineRequest struct {
 
 type PipelineRequest struct {
 	Name string       `json:"name"`
-	Type pipelineType `json:"type"`
+	Type PipelineType `json:"type"`
 }
 
-func (pt pipelineType) IsValid() bool {
+func (pt PipelineType) IsValid() bool {
 	switch pt {
 	case integrationPipelineType, pysparkPipelineType, pythonPipelineType, streamingPipelineType:
 		return true

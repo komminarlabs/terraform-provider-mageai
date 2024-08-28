@@ -41,7 +41,6 @@ func (d *PipelinesDataSource) Schema(ctx context.Context, req datasource.SchemaR
 	resp.Schema = schema.Schema{
 		// This description is used by the documentation generator and the language server.
 		Description: "To retrieve all pipelines.",
-
 		Attributes: map[string]schema.Attribute{
 			"pipelines": schema.ListNestedAttribute{
 				Computed: true,
