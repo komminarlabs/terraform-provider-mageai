@@ -173,7 +173,9 @@ func (p *MageAIProvider) Configure(ctx context.Context, req provider.ConfigureRe
 
 // Resources defines the resources implemented in the provider.
 func (p *MageAIProvider) Resources(ctx context.Context) []func() resource.Resource {
-	return []func() resource.Resource{}
+	return []func() resource.Resource{
+		NewPipelineResource,
+	}
 }
 
 // DataSources defines the data sources implemented in the provider.

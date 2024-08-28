@@ -4,42 +4,52 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/komminarlabs/terraform-provider-mageai/internal/sdk/mageai"
 )
 
-// Ensure the implementation satisfies the expected interfaces.
+// Ensure provider defined types fully satisfy framework interfaces.
 var (
-	_ datasource.DataSource              = &PipelineDataSource{}
-	_ datasource.DataSourceWithConfigure = &PipelineDataSource{}
+	_ resource.Resource                = &PipelineResource{}
+	_ resource.ResourceWithImportState = &PipelineResource{}
+	_ resource.ResourceWithImportState = &PipelineResource{}
 )
 
-// NewPipelineDataSource is a helper function to simplify the provider implementation.
-func NewPipelineDataSource() datasource.DataSource {
-	return &PipelineDataSource{}
+// NewPipelineResource is a helper function to simplify the provider implementation.
+func NewPipelineResource() resource.Resource {
+	return &PipelineResource{}
 }
 
-// PipelineDataSource is the data source implementation.
-type PipelineDataSource struct {
+// PipelineResource defines the resource implementation.
+type PipelineResource struct {
 	client mageai.Client
 }
 
-// Metadata returns the data source type name.
-func (d *PipelineDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+// Metadata returns the resource type name.
+func (r *PipelineResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_pipeline"
 }
 
-// Schema defines the schema for the data source.
-func (d *PipelineDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+// Schema defines the schema for the resource.
+func (r *PipelineResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		// This description is used by the documentation generator and the language server.
-		Description: "To retrieve a pipeline.",
+		Description: "To create a pipeline.",
 		Attributes: map[string]schema.Attribute{
 			"blocks": schema.ListNestedAttribute{
 				Computed:    true,
 				Description: "The blocks objects of a pipeline.",
+				Default:     listdefault.StaticValue(types.ListValueMust(BlockModel{}.GetAttrType(), []attr.Value{})),
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"all_upstream_blocks_executed": schema.BoolAttribute{
@@ -176,8 +186,11 @@ func (d *PipelineDataSource) Schema(ctx context.Context, req datasource.SchemaRe
 				Description: "The executor count.",
 			},
 			"name": schema.StringAttribute{
-				Computed:    true,
+				Required:    true,
 				Description: "Human readable name of the pipeline.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"retry_config": schema.SingleNestedAttribute{
 				Computed:    true,
@@ -212,11 +225,19 @@ func (d *PipelineDataSource) Schema(ctx context.Context, req datasource.SchemaRe
 			},
 			"type": schema.StringAttribute{
 				Computed:    true,
+				Optional:    true,
 				Description: "The type of the pipeline: `integration`, `pyspark`, `python`, `streaming`. **Note:** that `python` is a standard (batch) pipeline with a python backend, while `pyspark` is a batch pipeline with a spark backend.",
+				Default:     stringdefault.StaticString("python"),
+				Validators: []validator.String{
+					stringvalidator.OneOf([]string{"integration", "pyspark", "python", "streaming"}...),
+				},
 			},
 			"uuid": schema.StringAttribute{
-				Required:    true,
+				Computed:    true,
 				Description: "The uuid.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"updated_at": schema.StringAttribute{
 				Computed:    true,
@@ -230,8 +251,158 @@ func (d *PipelineDataSource) Schema(ctx context.Context, req datasource.SchemaRe
 	}
 }
 
-// Configure adds the provider configured client to the data source.
-func (d *PipelineDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+// Create creates the resource and sets the initial Terraform state.
+func (r *PipelineResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan PipelineModel
+
+	// Read Terraform plan data into the model
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Generate API request body from plan
+	createPipelineRequest := &mageai.CreatePipelineRequest{
+		Pipeline: mageai.PipelineRequest{
+			Name: plan.Name.ValueString(),
+			Type: mageai.PipelineType(plan.Type.ValueString()),
+		},
+	}
+
+	createPipelineResponse, err := r.client.PipelineAPI().CreatePipeline(ctx, createPipelineRequest)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error creating pipeline",
+			"Could not create pipeline, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	// Map response body to schema and populate Computed attribute values
+	pipelineModel, err := getPipelineModel(ctx, createPipelineResponse.Pipeline)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error getting pipeline model",
+			err.Error(),
+		)
+		return
+	}
+	plan = *pipelineModel
+
+	// Save data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
+
+// Read refreshes the Terraform state with the latest data.
+func (r *PipelineResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	// Get current state
+	var state PipelineModel
+
+	// Read Terraform prior state data into the model
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Get refreshed pipeline value from Mage AI
+	readDatabaseResponse, err := r.client.PipelineAPI().ReadPipeline(ctx, state.UUID.ValueStringPointer())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error getting pipeline",
+			err.Error(),
+		)
+		return
+	}
+
+	// Overwrite items with refreshed state
+	pipelineModel, err := getPipelineModel(ctx, readDatabaseResponse.Pipeline)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error getting pipeline model",
+			err.Error(),
+		)
+		return
+	}
+	state = *pipelineModel
+
+	// Save updated data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
+
+// Update updates the resource and sets the updated Terraform state on success.
+func (r *PipelineResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan PipelineModel
+
+	// Read Terraform plan data into the model
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Generate API request body from plan
+	updatePipelineRequest := &mageai.UpdatePipelineRequest{
+		Pipeline: mageai.PipelineRequest{
+			Name: plan.Name.ValueString(),
+			Type: mageai.PipelineType(plan.Type.ValueString()),
+		}}
+
+	// Update existing pipeline
+	updatePipelineResponse, err := r.client.PipelineAPI().UpdatePipeline(ctx, plan.UUID.ValueStringPointer(), updatePipelineRequest)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error updating pipeline",
+			"Could not update pipeline, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	// Map response body to schema and populate Computed attribute values
+	pipelineModel, err := getPipelineModel(ctx, updatePipelineResponse.Pipeline)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error getting pipeline model",
+			err.Error(),
+		)
+		return
+	}
+	plan = *pipelineModel
+
+	// Save updated data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
+
+// Delete deletes the resource and removes the Terraform state on success.
+func (r *PipelineResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state PipelineModel
+
+	// Read Terraform prior state data into the model
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Delete existing pipeline
+	err := r.client.PipelineAPI().DeletePipeline(ctx, state.UUID.ValueStringPointer())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error deleting pipeline",
+			"Could not delete pipeline, unexpected error: "+err.Error(),
+		)
+		return
+	}
+}
+
+// Configure adds the provider configured client to the resource.
+func (r *PipelineResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.
 	if req.ProviderData == nil {
 		return
@@ -241,47 +412,13 @@ func (d *PipelineDataSource) Configure(ctx context.Context, req datasource.Confi
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected mageai.client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected mageai.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
-
-	d.client = pd.client
+	r.client = pd.client
 }
 
-// Read refreshes the Terraform state with the latest data.
-func (d *PipelineDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var state PipelineModel
-
-	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	readDatabaseResponse, err := d.client.PipelineAPI().ReadPipeline(ctx, state.UUID.ValueStringPointer())
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error getting pipeline",
-			err.Error(),
-		)
-		return
-	}
-
-	// Map response body to model
-	pipelineState, err := getPipelineModel(ctx, readDatabaseResponse.Pipeline)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error getting pipelines",
-			err.Error(),
-		)
-		return
-	}
-	state = *pipelineState
-
-	// Set state
-	diags := resp.State.Set(ctx, &state)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
+func (r *PipelineResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("uuid"), req, resp)
 }
