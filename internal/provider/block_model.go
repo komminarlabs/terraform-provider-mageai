@@ -6,8 +6,24 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/komminarlabs/terraform-provider-mageai/internal/sdk/mageai"
 )
+
+type BlockDataSourceModel struct {
+	PipelineUUID types.String `tfsdk:"pipeline_uuid"`
+	BlockModel
+}
+
+type BlockResourceModel struct {
+	PipelineUUID types.String `tfsdk:"pipeline_uuid"`
+	BlockModel
+}
+
+type BlocksDataSourceModel struct {
+	PipelineUUID types.String `tfsdk:"pipeline_uuid"`
+	Blocks       []BlockModel `tfsdk:"blocks"`
+}
 
 type BlockModel struct {
 	AllUpstreamBlocksExecuted types.Bool   `tfsdk:"all_upstream_blocks_executed"`
@@ -127,6 +143,74 @@ func getBlockModel(ctx context.Context, block mageai.Block) (*BlockModel, error)
 		UpstreamBlocks:            upstreamBlocks,
 		UUID:                      types.StringValue(block.UUID),
 	}
-
 	return &blockState, nil
+}
+
+func convertUpstreamBlocksSetToStringSlice(upstreamBlocks basetypes.SetValue) []string {
+	upstreamBlocksSlice := []string{}
+	for _, block := range upstreamBlocks.Elements() {
+		upstreamBlocksSlice = append(upstreamBlocksSlice, block.String())
+	}
+	return upstreamBlocksSlice
+}
+
+func convertBlockConfigurationObjectToModel(ctx context.Context, blockConfigurationObject basetypes.ObjectValue) (*mageai.BlockConfiguration, error) {
+	configurationModel := BlockConfigurationModel{}
+	diags := blockConfigurationObject.As(ctx, &configurationModel, basetypes.ObjectAsOptions{})
+	if diags.HasError() {
+		return nil, fmt.Errorf("could not get configuration, unexpected error: %v", diags.Errors())
+	}
+
+	configuration := &mageai.BlockConfiguration{
+		DataProvider:         configurationModel.DataProvider.ValueString(),
+		DataProviderDatabase: configurationModel.DataProviderDatabase.ValueString(),
+		DataProviderProfile:  configurationModel.DataProviderProfile.ValueString(),
+		DataProviderSchema:   configurationModel.DataProviderSchema.ValueString(),
+		DataProviderTable:    configurationModel.DataProviderTable.ValueString(),
+		ExportWritePolicy:    configurationModel.ExportWritePolicy.ValueString(),
+		UseRawSql:            configurationModel.UseRawSql.ValueString(),
+	}
+	return configuration, nil
+}
+
+func makeCreateBlockRequestFromModel(ctx context.Context, b BlockResourceModel) (*mageai.CreateBlockRequest, error) {
+	upstreamBlocks := convertUpstreamBlocksSetToStringSlice(b.UpstreamBlocks)
+
+	configuration, err := convertBlockConfigurationObjectToModel(ctx, b.Configuration)
+	if err != nil {
+		return nil, fmt.Errorf("error converting block configuration: %v", err)
+	}
+
+	return &mageai.CreateBlockRequest{
+		Block: mageai.BlockRequest{
+			Configuration:  *configuration,
+			Content:        b.Content.ValueString(),
+			ExtensionUUID:  b.ExtensionUUID.ValueString(),
+			Language:       b.Language.ValueString(),
+			Name:           b.Name.ValueString(),
+			Priority:       b.Priority.ValueInt32(),
+			Type:           mageai.BlockType(b.Type.ValueString()),
+			UpstreamBlocks: upstreamBlocks,
+		},
+	}, nil
+}
+
+func makeUpdateBlockRequestFromModel(ctx context.Context, b BlockResourceModel) (*mageai.UpdateBlockRequest, error) {
+	configuration, err := convertBlockConfigurationObjectToModel(ctx, b.Configuration)
+	if err != nil {
+		return nil, fmt.Errorf("error converting block configuration")
+	}
+
+	return &mageai.UpdateBlockRequest{
+		Block: mageai.BlockRequest{
+			Configuration:  *configuration,
+			Content:        b.Content.ValueString(),
+			ExtensionUUID:  b.ExtensionUUID.ValueString(),
+			Language:       b.Language.ValueString(),
+			Name:           b.Name.ValueString(),
+			Priority:       b.Priority.ValueInt32(),
+			Type:           mageai.BlockType(b.Type.ValueString()),
+			UpstreamBlocks: convertUpstreamBlocksSetToStringSlice(b.UpstreamBlocks),
+		},
+	}, nil
 }

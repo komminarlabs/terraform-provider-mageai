@@ -46,13 +46,13 @@ type UpdateBlockRequest struct {
 
 type BlockRequest struct {
 	Color          string             `json:"color"`
-	Configuration  blockConfiguration `json:"configuration"`
+	Configuration  BlockConfiguration `json:"configuration"`
 	Content        string             `json:"content"`
 	ExtensionUUID  string             `json:"extension_uuid"`
 	Language       string             `json:"language"`
 	Name           string             `json:"name"`
 	Priority       int32              `json:"priority"`
-	RetryConfig    retryConfig        `json:"retry_config"`
+	RetryConfig    RetryConfig        `json:"retry_config"`
 	Type           BlockType          `json:"type"`
 	UpstreamBlocks []string           `json:"upstream_blocks"`
 }

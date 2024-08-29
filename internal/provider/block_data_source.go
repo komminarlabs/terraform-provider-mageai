@@ -35,9 +35,9 @@ func (d *BlockDataSource) Metadata(ctx context.Context, req datasource.MetadataR
 func (d *BlockDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		// This description is used by the documentation generator and the language server.
-		Description: "Fetch and return the contents and metadata of a block.",
+		Description: "Fetch and return the contents of a block in a pipeline.",
 		Attributes: map[string]schema.Attribute{
-			"pipeline_uuid": schema.BoolAttribute{
+			"pipeline_uuid": schema.StringAttribute{
 				Required:    true,
 				Description: "The UUID of the pipeline to fetch the block from.",
 			},
@@ -180,14 +180,14 @@ func (d *BlockDataSource) Configure(ctx context.Context, req datasource.Configur
 
 // Read refreshes the Terraform state with the latest data.
 func (d *BlockDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var state BlockModel
+	var state BlockDataSourceModel
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	readDatabaseResponse, err := d.client.BlockAPI().ReadBlock(ctx, state.PipelineUUID, state.UUID)
+	readDatabaseResponse, err := d.client.BlockAPI().ReadBlock(ctx, state.PipelineUUID.ValueStringPointer(), state.UUID.ValueStringPointer())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error getting block",
@@ -205,7 +205,7 @@ func (d *BlockDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		)
 		return
 	}
-	state = *blockState
+	state.BlockModel = *blockState
 
 	// Set state
 	diags := resp.State.Set(ctx, &state)
