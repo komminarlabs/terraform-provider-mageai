@@ -28,7 +28,6 @@ Create a new block in a pipeline.
 - `extension_uuid` (String) The extension uuid.
 - `language` (String) The language.
 - `priority` (Number) The priority.
-- `upstream_blocks` (Set of String) The block UUIDs that this block depends on.
 
 ### Read-Only
 
@@ -39,6 +38,7 @@ Create a new block in a pipeline.
 - `retry_config` (Attributes) The blocks objects of a block. (see [below for nested schema](#nestedatt--retry_config))
 - `status` (String) Status of block: `executed`, `failed`, `not_executed`, `updated`.
 - `timeout` (Number) The timeout.
+- `upstream_blocks` (Set of String) The block UUIDs that this block depends on.
 - `uuid` (String) Unique identifier for the block.
 
 <a id="nestedatt--configuration"></a>
