@@ -11,6 +11,7 @@ import (
 )
 
 type Client interface {
+	BlockAPI() BlockAPI
 	PipelineAPI() PipelineAPI
 	Close()
 }
@@ -47,6 +48,10 @@ func (c *client) Close() {
 }
 
 func (c *client) PipelineAPI() PipelineAPI {
+	return c
+}
+
+func (c *client) BlockAPI() BlockAPI {
 	return c
 }
 

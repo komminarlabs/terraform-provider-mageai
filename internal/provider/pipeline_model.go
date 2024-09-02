@@ -44,62 +44,11 @@ func (r RetryConfigModel) GetAttrType() map[string]attr.Type {
 func getPipelineModel(ctx context.Context, pipeline mageai.Pipeline) (*PipelineModel, error) {
 	blocks := make([]BlockModel, 0)
 	for _, block := range pipeline.Blocks {
-		blockConfigurationValue := BlockConfigurationModel{
-			DataProvider:         types.StringValue(block.Configuration.DataProvider),
-			DataProviderDatabase: types.StringValue(block.Configuration.DataProviderDatabase),
-			DataProviderProfile:  types.StringValue(block.Configuration.DataProviderProfile),
-			DataProviderSchema:   types.StringValue(block.Configuration.DataProviderSchema),
-			DataProviderTable:    types.StringValue(block.Configuration.DataProviderTable),
-			ExportWritePolicy:    types.StringValue(block.Configuration.ExportWritePolicy),
-			UseRawSql:            types.StringValue(block.Configuration.UseRawSql),
+		blockState, err := getBlockModel(ctx, block)
+		if err != nil {
+			return nil, fmt.Errorf("error getting blocks %s", err)
 		}
-
-		blockConfigurationObjectValue, diags := types.ObjectValueFrom(ctx, blockConfigurationValue.GetAttrType(), blockConfigurationValue)
-		if diags.HasError() {
-			return nil, fmt.Errorf("error getting block configuration")
-		}
-
-		downstreamBlocks, diags := types.SetValueFrom(ctx, types.StringType, block.DownstreamBlocks)
-		if diags.HasError() {
-			return nil, fmt.Errorf("error getting downstream_blocks")
-		}
-
-		blockRetryConfigValue := RetryConfigModel{
-			Delay:              types.Int32Value(pipeline.RetryConfig.Delay),
-			ExponentialBackoff: types.BoolValue(pipeline.RetryConfig.ExponentialBackoff),
-			MaxDelay:           types.Int32Value(pipeline.RetryConfig.MaxDelay),
-			Retries:            types.Int32Value(pipeline.RetryConfig.Retries),
-		}
-
-		blockRetryConfigObjectValue, diags := types.ObjectValueFrom(ctx, blockRetryConfigValue.GetAttrType(), blockRetryConfigValue)
-		if diags.HasError() {
-			return nil, fmt.Errorf("error getting block retry_config")
-		}
-
-		upstreamBlocks, diags := types.SetValueFrom(ctx, types.StringType, block.UpstreamBlocks)
-		if diags.HasError() {
-			return nil, fmt.Errorf("error getting upstream_blocks")
-		}
-
-		block := BlockModel{
-			AllUpstreamBlocksExecuted: types.BoolValue(block.AllUpstreamBlocksExecuted),
-			Configuration:             blockConfigurationObjectValue,
-			Content:                   types.StringValue(block.Content),
-			DownstreamBlocks:          downstreamBlocks,
-			ExecutorType:              types.StringValue(block.ExecutorType),
-			ExtensionUUID:             types.StringValue(block.ExtensionUUID),
-			HasCallback:               types.BoolValue(block.HasCallback),
-			Language:                  types.StringValue(block.Language),
-			Name:                      types.StringValue(block.Name),
-			Priority:                  types.Int32Value(block.Priority),
-			RetryConfig:               blockRetryConfigObjectValue,
-			Status:                    types.StringValue(block.Status),
-			Timeout:                   types.Int64Value(block.Timeout),
-			Type:                      types.StringValue(block.Type),
-			UpstreamBlocks:            upstreamBlocks,
-			UUID:                      types.StringValue(block.UUID),
-		}
-		blocks = append(blocks, block)
+		blocks = append(blocks, *blockState)
 	}
 
 	pipelineRetryConfigValue := RetryConfigModel{

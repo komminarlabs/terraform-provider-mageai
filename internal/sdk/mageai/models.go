@@ -17,13 +17,13 @@ type pipelinesResponse struct {
 }
 
 type Pipeline struct {
-	Blocks                   []block     `json:"blocks"`
+	Blocks                   []Block     `json:"blocks"`
 	CacheBlockOutputInMemory bool        `json:"cache_block_output_in_memory"`
 	CreatedAt                string      `json:"created_at"`
 	Description              string      `json:"description"`
 	ExecutorCount            int32       `json:"executor_count"`
 	Name                     string      `json:"name"`
-	RetryConfig              retryConfig `json:"retry_config"`
+	RetryConfig              RetryConfig `json:"retry_config"`
 	RunPipelineInOneProcess  bool        `json:"run_pipeline_in_one_process"`
 	Tags                     []string    `json:"tags"`
 	Type                     string      `json:"type"`
@@ -32,10 +32,10 @@ type Pipeline struct {
 	VariablesDir             string      `json:"variables_dir"`
 }
 
-type block struct {
+type Block struct {
 	AllUpstreamBlocksExecuted bool               `json:"all_upstream_blocks_executed"`
 	Color                     string             `json:"color"`
-	Configuration             blockConfiguration `json:"configuration"`
+	Configuration             BlockConfiguration `json:"configuration"`
 	Content                   string             `json:"content"`
 	DownstreamBlocks          []string           `json:"downstream_blocks"`
 	ExecutorType              string             `json:"executor_type"`
@@ -45,7 +45,7 @@ type block struct {
 	Name                      string             `json:"name"`
 	Pipelines                 []string           `json:"pipelines"`
 	Priority                  int32              `json:"priority"`
-	RetryConfig               retryConfig        `json:"retry_config"`
+	RetryConfig               RetryConfig        `json:"retry_config"`
 	Status                    string             `json:"status"`
 	Timeout                   int64              `json:"timeout"`
 	Type                      string             `json:"type"`
@@ -53,7 +53,7 @@ type block struct {
 	UUID                      string             `json:"uuid"`
 }
 
-type blockConfiguration struct {
+type BlockConfiguration struct {
 	DataProvider         string `json:"data_provider"`
 	DataProviderDatabase string `json:"data_provider_database"`
 	DataProviderProfile  string `json:"data_provider_profile"`
@@ -63,7 +63,7 @@ type blockConfiguration struct {
 	UseRawSql            string `json:"use_raw_sql"`
 }
 
-type retryConfig struct {
+type RetryConfig struct {
 	Delay              int32 `json:"delay"`
 	ExponentialBackoff bool  `json:"exponential_backoff"`
 	MaxDelay           int32 `json:"max_delay"`
