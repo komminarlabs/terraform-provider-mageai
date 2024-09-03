@@ -57,11 +57,14 @@ provider "mageai" {
 
 ### Data Sources
 
+* `mageai_block`
+* `mageai_blocks`
 * `mageai_pipeline`
 * `mageai_pipelines`
 
 ### Resources
 
+* `mageai_block`
 * `mageai_pipeline`
 
 ## Developing the Provider
