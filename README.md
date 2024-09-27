@@ -1,6 +1,14 @@
 # terraform-provider-mageai
 Terraform provider to manage Mage AI
 
+> [!CAUTION]
+> 
+> This Terraform provider is currently in **active development** and is **not considered stable**. Features, configurations, and behavior may change without notice, and there may be bugs or incomplete functionality.
+> 
+> **DO NOT** use this provider in any production environment. It is intended for testing and development purposes only.
+> 
+> Please proceed with caution and keep this in mind when using it in any environment.
+
 ## Requirements
 
 - [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.0
