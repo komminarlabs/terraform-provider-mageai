@@ -1,13 +1,14 @@
 # terraform-provider-mageai
+
 Terraform provider to manage Mage AI
 
-> [!CAUTION]
-> 
-> This Terraform provider is currently in **active development** and is **not considered stable**. Features, configurations, and behavior may change without notice, and there may be bugs or incomplete functionality.
-> 
-> **DO NOT** use this provider in any production environment. It is intended for testing and development purposes only.
-> 
-> Please proceed with caution and keep this in mind when using it in any environment.
+## ⚠️ Deprecation Notice
+
+This Terraform provider was an experimental project and **was never published**.   It is **no longer maintained** and will not receive any updates, fixes, or support.  
+
+- Do **not** use this provider in production or for active development.  
+- The repository remains public for reference and archival purposes only.  
+- If you need a MageAI integration, you may fork this repo and continue development independently.
 
 ## Requirements
 
